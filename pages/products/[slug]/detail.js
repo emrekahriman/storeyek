@@ -32,18 +32,28 @@ function detail({ product }) {
   const createComment = async (e) => {
     e.preventDefault();
 
+    const toastId = toast.loading("Sending comment...");
+
     if (status !== "loading" && !session) {
       router.push("/login");
-      throw new Error("You must be logged in to comment");
+      toast.error("You must be logged in to send a comment", {
+        id: toastId,
+      });
+      return;
     }
 
     // Get the area of the name="comment" textarea
     const comment = e.target.elements.comment.value;
     const submitBtn = e.target.elements.submit;
 
+    if (!comment) {
+      toast.error("Comment is required", { id: toastId });
+      return;
+    }
+
     // Disable the submit button
     submitBtn.disabled = true;
-    submitBtn.innerHTML = "Loading...";
+    submitBtn.innerHTML = "Sending...";
 
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL}/user/create-comment`,
@@ -62,10 +72,18 @@ function detail({ product }) {
 
     const data = res.data;
     if (data.status === "success") {
-      setComments(comments => [data.comment, ...comments]);
+      setComments((comments) => [data.comment, ...comments]);
       e.target.reset();
+      toast.success("Comment sent successfully", {
+        id: toastId,
+      });
     } else {
-      throw new Error("Error while sending comment");
+      toast.error(data.error, {
+        id: toastId,
+        style: {
+          maxWidth: "30rem",
+        },
+      });
     }
   };
 
@@ -229,19 +247,7 @@ function detail({ product }) {
               </h1>
               {/* Create comment section */}
               <div className="mt-8 flex flex-col gap-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (e.target.elements.comment.value === "") {
-                      return toast.error("Comment cannot be empty");
-                    }
-                    toast.promise(createComment(e), {
-                      loading: "Loading...",
-                      success: "Comment successfully sent!",
-                      error: (err) => err.message,
-                    });
-                  }}
-                >
+                <form onSubmit={createComment}>
                   <div className="flex flex-col gap-4">
                     <textarea
                       className="h-32 w-full rounded-lg bg-gray-100 p-4"
